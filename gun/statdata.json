@@ -1,0 +1,162 @@
+{
+	"1":{
+		"stat mod": 4,
+		"attack mod": 6
+	},
+	"2":{
+		"stat mod": 4,
+		"attack mod": 6
+	},
+	"3":{
+		"stat mod": 4,
+		"attack mod": 6
+	},
+	"4":{
+		"stat mod": 5,
+		"attack mod": 7
+	},
+	"5":{
+		"stat mod": 5,
+		"attack mod": 8
+	},
+	"6":{
+		"stat mod": 5,
+		"attack mod": 8
+	},
+	"7":{
+		"stat mod": 5,
+		"attack mod": 8
+	},
+	"8":{
+		"stat mod": 5,
+		"attack mod": 8
+	},
+	"9":{
+		"stat mod": 5,
+		"attack mod": 9
+	},
+	"10":{
+		"stat mod": 5,
+		"attack mod": 9
+	},
+	"11":{
+		"stat mod": 5,
+		"attack mod": 9
+	},
+	"12":{
+		"stat mod": 5,
+		"attack mod": 9
+	},
+	"13":{
+		"stat mod": 5,
+		"attack mod": 10
+	},
+	"14":{
+		"stat mod": 5,
+		"attack mod": 10
+	},
+	"15":{
+		"stat mod": 5,
+		"attack mod": 10
+	},
+	"16":{
+		"stat mod": 5,
+		"attack mod": 10
+	},
+	"17":{
+		"stat mod": 5,
+		"attack mod": 11
+	},
+	"18":{
+		"stat mod": 5,
+		"attack mod": 11
+	},
+	"19":{
+		"stat mod": 5,
+		"attack mod": 11
+	},
+	"20":{
+		"stat mod": 5,
+		"attack mod": 11
+	},
+	"101":{
+		"stat mod": 3,
+		"attack mod": 5
+	},
+	"102":{
+		"stat mod": 3,
+		"attack mod": 5
+	},
+	"103":{
+		"stat mod": 3,
+		"attack mod": 5
+	},
+	"104":{
+		"stat mod": 4,
+		"attack mod": 6
+	},
+	"105":{
+		"stat mod": 4,
+		"attack mod": 7
+	},
+	"106":{
+		"stat mod": 4,
+		"attack mod": 7
+	},
+	"107":{
+		"stat mod": 4,
+		"attack mod": 7
+	},
+	"108":{
+		"stat mod": 5,
+		"attack mod": 8
+	},
+	"109":{
+		"stat mod": 5,
+		"attack mod": 9
+	},
+	"110":{
+		"stat mod": 5,
+		"attack mod": 9
+	},
+	"111":{
+		"stat mod": 5,
+		"attack mod": 9
+	},
+	"112":{
+		"stat mod": 5,
+		"attack mod": 9
+	},
+	"113":{
+		"stat mod": 5,
+		"attack mod": 10
+	},
+	"114":{
+		"stat mod": 5,
+		"attack mod": 10
+	},
+	"115":{
+		"stat mod": 5,
+		"attack mod": 10
+	},
+	"116":{
+		"stat mod": 5,
+		"attack mod": 10
+	},
+	"117":{
+		"stat mod": 5,
+		"attack mod": 11
+	},
+	"118":{
+		"stat mod": 5,
+		"attack mod": 11
+	},
+	"119":{
+		"stat mod": 5,
+		"attack mod": 11
+	},
+	"120":{
+		"stat mod": 5,
+		"attack mod": 11
+	}
+}

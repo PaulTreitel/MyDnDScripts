@@ -3,3 +3,5 @@ names/__pycache__
 names/lettersequences.xlsx
 stats/statdistributions.xlsx
 names/out.txt
+names/out_last.txt
+names/usernames.txt
