@@ -145,14 +145,24 @@ def getLetterFreq(start_letters):
 
 
 # generate a name using forbidden start and format rules
-def createNameRules(mk, freq, forms_used):
-	form = random.choice(forms_used)
-	name = getRandLetter(freq)
-	while not formatsMatch(name, form): # rule enforced on first char
+def createNameRules(mk, freq, forms_used, prefix=''):
+	form = ''
+	name = ''
+	if prefix == '':
+		form = random.choice(forms_used)
 		name = getRandLetter(freq)
+	else:
+		name = prefix
+		form = random.choice(forms_used)
+
+	while not formatsMatch(name, form): # rule enforced on first char
+		if prefix == '':
+			name = getRandLetter(freq)
+		else:
+			form = random.choice(forms_used)
 	
 	mk.setState(name)
-	for i in range(len(form) - 1):
+	for i in range(len(form) - len(name)):
 		mk.step()
 		while mk.state[:2] in bad_starts or not formatsMatch(mk.state, form):
 			mk.setState(mk.state[:-1])
@@ -181,6 +191,11 @@ def argsToDict():
 	elif "-random" in sys.argv:
 		args["call_type"] = "random"
 		sys.argv.remove("-random")
+	elif "-prefix" in sys.argv:
+		args["call_type"] = "prefix"
+		args["prefix"] = sys.argv[sys.argv.index('-prefix') + 1]
+		sys.argv.pop(sys.argv.index('-prefix') + 1)
+		sys.argv.remove('-prefix')
 	else:
 		args["call_type"] = "generate"
 
@@ -205,6 +220,8 @@ def argsToDict():
 		sys.argv.remove("-last")
 
 	if args["call_type"] == "generate" and len(sys.argv) > 0:
+		args["datafile"] = sys.argv[0]
+	elif args["call_type"] == "prefix" and len(sys.argv) > 0:
 		args["datafile"] = sys.argv[0]
 	else:
 		args["input_files"] = sys.argv
@@ -231,3 +248,8 @@ elif args["call_type"] == "random":
 	names = filesToList(args["input_files"])
 	for i in range(args["num"]):
 		print(random.choice(names))
+
+elif args["call_type"] == "prefix":
+	mk, freq, forms_used = configureMarkov(args["datafile"], args["name_type"] == "-last")
+	for i in range(args["num"]):
+		print(createNameRules(mk, freq, forms_used, args['prefix']))
