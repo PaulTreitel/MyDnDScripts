@@ -45,10 +45,12 @@ def calculate_passive(sl, a, high_a, higher_a, haul, sister):
 	total_value = 0
 	for i in range(1, 101):
 		new_money = get_passive_money(sl, i, a, high_a, higher_a)
-		if sister and new_money < 0:
-			new_money += calculate_passive(sl, a, high_a, higher_a, False, False)
-		if haul and new_money < 0:
+		if sister and haul and new_money < 0:
+			new_money += calculate_passive(sl, a, high_a, higher_a, haul, False)
+		elif haul and new_money < 0:
 			new_money = new_money // 2
+		elif sister and new_money < 0:
+			new_money += calculate_passive(sl, a, high_a, higher_a, haul, False)
 		total_value += new_money
 	expected_value = total_value / 100
 	return expected_value
