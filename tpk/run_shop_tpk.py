@@ -11,7 +11,7 @@ REWARD_VALUES = [
 	[-4, 0, 2, 4],
 	[-10, 0, 5, 10]
 ]
-PROFIT_VALUES = [0, 10, 15, 25, 55, 110, 220, 450, 1600, 3200, 8000]
+PROFIT_VALUES = [10, 15, 25, 55, 110, 220, 450, 1600, 3200, 8000]
 
 
 def calculate_run_shop(int_lore, skill, diplomacy, sl, haul):
@@ -35,7 +35,7 @@ def get_run_expected_value(dc, int_lore, skill, diplomacy, sl, haul):
 				if d + diplomacy >= dc:
 					successes += 1
 				reward_level = (dc - 10) // 5
-				new_money = REWARD_VALUES[reward_level][successes] * PROFIT_VALUES[sl]
+				new_money = REWARD_VALUES[reward_level][successes] * PROFIT_VALUES[sl - 1]
 				if haul and new_money < 0:
 					new_money = new_money // 2
 				total_value += new_money
@@ -88,15 +88,15 @@ def  get_passive_money(sl, i, a, high_a, higher_a):
 
 def get_expected_roll(dice, die_size, a, high_a, higher_a, double):
 	roll = 0
-	die_ev = (die_size / 2) + 1
+	die_ev = (die_size + 1) / 2
 	for i in range(dice):
 		die_val = 0
 		if higher_a:
 			die_reroll_ev = sum([r for r in range(3, die_size + 1)]) / (die_size - 2)
 			die_val += 2 * die_reroll_ev
-		if high_a:
+		elif high_a:
 			die_val += 2 * die_ev
-		if a:
+		elif a:
 			die_val += die_ev + 2
 		else:
 			die_val += 3
