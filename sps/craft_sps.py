@@ -16,7 +16,8 @@ ITEM_PRICES = [(10, 20), (25, 35), (45, 60), (75, 100), (125, 160), (200, 250),
 	(18_600, 24_000), (30_400, 40_000), (52_000, 72_000)]
 
 # DISCOUNTS = [0, 10, 20, 35, 50]
-DISCOUNTS = [0, 15, 30, 45, 60]
+# DISCOUNTS = [0, 15, 30, 45, 60]
+DISCOUNTS = [0, 20, 35, 45, 65]
 CRAFT_BONUSES = [0, 1, 3, 5]
 BELOW_ZERO_LOSS = 10
 PARAM_NOT_ENTERED = -10
@@ -25,7 +26,6 @@ MAX_INGENUITY = 4
 def make_craft(bonus, pc_level):
 	print('Item Level\t 1 / 2 / 3 Downtimes\tgp Discounts')
 	for item_level in range(min(21, pc_level + 1)):
-	# for item_level in range(21):
 		discount1_pctge = get_avg_discount(item_level, pc_level, bonus, 1)
 		discount2_pctge = get_avg_discount(item_level, pc_level, bonus, 2)
 		discount3_pctge = get_avg_discount(item_level, pc_level, bonus, 3)
@@ -61,7 +61,7 @@ def get_avg_discount(item_level, pc_level, bonus, downtimes):
 	poss_outcomes = []
 	for roll in range(1, 21):
 		result = roll + bonus
-		ingenuity = get_ingenuity_first_run(item_level, pc_level, result)
+		ingenuity = get_ingenuity_first_run(item_level, pc_level, roll, bonus)
 		loss = 0.0
 		if result <= LEVEL_DCS[item_level] - 10:
 			loss = BELOW_ZERO_LOSS
@@ -81,14 +81,13 @@ def get_avg_discount(item_level, pc_level, bonus, downtimes):
 		poss_outcomes = new_poss_outcomes
 	
 	discounts = [DISCOUNTS[x[0]] - x[1] for x in poss_outcomes]
-	# print(poss_outcomes)
 	return sum(discounts) / len(discounts)
 
 def extend_previous_craft_attempt(item_level, baseline, bonus):
 	new_attempts = []
 	for roll in range(1, 21):
 		result = roll + bonus + CRAFT_BONUSES[baseline[0]]
-		delta_ingenuity = ingenuity_change_later_runs(item_level, result)
+		delta_ingenuity = ingenuity_change_later_runs(item_level, roll, bonus)
 		ingenuity = baseline[0]
 		loss = baseline[1]
 		if ingenuity == 0 and delta_ingenuity == -1:
@@ -99,12 +98,18 @@ def extend_previous_craft_attempt(item_level, baseline, bonus):
 		new_attempts.append((ingenuity, loss))
 	return new_attempts
 
-def get_ingenuity_first_run(item_level, pc_level, check_result):
-	if check_result >= LEVEL_DCS[item_level] + 10:
+def get_ingenuity_first_run(item_level, pc_level, roll, bonus):
+	check_result = roll + bonus
+	nat20_crit = roll == 20 and check_result >= LEVEL_DCS[item_level]
+	nat1_crit = roll == 1 and check_result <= LEVEL_DCS[item_level]
+
+	if check_result >= LEVEL_DCS[item_level] + 10 or nat20_crit:
 		if item_level <= pc_level / 2:
 			return 4
 		else:
 			return 2
+	elif check_result <= LEVEL_DCS[item_level] - 10 or nat1_crit:
+		return 0
 	elif check_result >= LEVEL_DCS[item_level]:
 		if item_level <= pc_level / 4:
 			return 4
@@ -115,27 +120,34 @@ def get_ingenuity_first_run(item_level, pc_level, check_result):
 	else:
 		return 0
 
-def ingenuity_change_later_runs(item_level, check_result):
-	if check_result >= LEVEL_DCS[item_level] + 10:
+def ingenuity_change_later_runs(item_level, roll, bonus):
+	check_result = roll + bonus
+	nat20_crit = roll == 20 and check_result >= LEVEL_DCS[item_level]
+	nat1_crit = roll == 1 and check_result <= LEVEL_DCS[item_level]
+
+	if check_result >= LEVEL_DCS[item_level] + 10 or nat20_crit:
 		return 2
+	elif check_result <= LEVEL_DCS[item_level] - 10 or nat1_crit:
+		return -1
 	elif check_result >= LEVEL_DCS[item_level]:
 		return 1
-	elif check_result > LEVEL_DCS[item_level] - 10:
-		return 0
 	else:
-		return -1
+		return 0
 
 
 @click.command(context_settings={"ignore_unknown_options": True})
 @click.option('-lvl', required=True, default=PARAM_NOT_ENTERED, help='Player Character Level.')
 @click.option('-craft', default=PARAM_NOT_ENTERED, help='Your Crafting bonus. If unspecified, the optimal bonus will be used.')
 def handler(lvl, craft):
+	if lvl == PARAM_NOT_ENTERED:
+		return -1
 	if lvl <= 0 or lvl > 20:
 		print("Player character levels are 1-20")
-		return
+		return -1
 	if craft == PARAM_NOT_ENTERED:
 		craft = OPTIMAL_BONUSES[lvl - 1]
 	make_craft(craft, lvl)
+	return 0
 
 if __name__ == "__main__":
 	handler()

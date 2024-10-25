@@ -16,11 +16,11 @@ REWARD_DC_30 = 2
 REWARD_DC_40 = 3
 
 
-def calculate_run_shop(lore, skill, diplomacy, sr, haul, lvl):
-	dc_15_ev = run_expected_value(DCS[0], lore, skill, diplomacy, sr, haul, REWARD_DC_15)
-	dc_20_ev = run_expected_value(DCS[1], lore, skill, diplomacy, sr, haul, REWARD_DC_20)
-	dc_30_ev = run_expected_value(DCS[2], lore, skill, diplomacy, sr, haul, REWARD_DC_30)
-	dc_40_ev = run_expected_value(DCS[3], lore, skill, diplomacy, sr, haul, REWARD_DC_40)
+def calculate_run_shop(lore, skill, diplomacy, sr, haul, crits):
+	dc_15_ev = run_expected_value(DCS[0], lore, skill, diplomacy, sr, haul, REWARD_DC_15, crits)
+	dc_20_ev = run_expected_value(DCS[1], lore, skill, diplomacy, sr, haul, REWARD_DC_20, crits)
+	dc_30_ev = run_expected_value(DCS[2], lore, skill, diplomacy, sr, haul, REWARD_DC_30, crits)
+	dc_40_ev = run_expected_value(DCS[3], lore, skill, diplomacy, sr, haul, REWARD_DC_40, crits)
 	print('DC 15: %f\nDC 20: %f\nDC 30: %f\nDC 40: %f'
 		%(dc_15_ev, dc_20_ev, dc_30_ev, dc_40_ev))
 
@@ -40,11 +40,14 @@ def run_expected_value(dc, lore, skill, diplomacy, sr, haul, reward_level, crits
 					successes += 1
 
 				if crits:
-					if i + lore >= dc + 10:
+					nat20_i = i == 20 and i + lore >= dc
+					nat20_s = s == 20 and s + skill >= dc
+					nat20_d = d == 20 and d + diplomacy >= dc
+					if i + lore >= dc + 10 or nat20_i:
 						successes += 1
-					if s + skill >= dc + 10:
+					if s + skill >= dc + 10 or nat20_s:
 						successes += 1
-					if d + diplomacy >= dc + 10:
+					if d + diplomacy >= dc + 10 or nat20_d:
 						successes += 1
 				successes = min(successes, 3)
 				
@@ -56,8 +59,8 @@ def run_expected_value(dc, lore, skill, diplomacy, sr, haul, reward_level, crits
 
 def calculate_passive(sr, a, high_a, higher_a, haul, sister):
 	total_value = 0
-	for i in range(1, 101):
-		new_money = get_passive_money(sr, i, a, high_a, higher_a)
+	for roll in range(1, 101):
+		new_money = get_passive_money(sr, roll, a, high_a, higher_a)
 		if sister and haul and new_money < 0:
 			new_money += calculate_passive(sr, a, high_a, higher_a, haul, False)
 		elif haul and new_money < 0:
@@ -68,29 +71,29 @@ def calculate_passive(sr, a, high_a, higher_a, haul, sister):
 	expected_value = total_value / 100
 	return expected_value
 
-def  get_passive_money(sr, i, a, high_a, higher_a):
+def get_passive_money(sr, d100_roll, a, high_a, higher_a):
 	new_money = 0
-	if 1 <= i <= 20:
+	if 1 <= d100_roll <= 20:
 		new_money -= 10 * sr
-	elif 21 <= i <= 30:
+	elif 21 <= d100_roll <= 30:
 		new_money -= 5 * sr
-	elif 31 <= i <= 40:
+	elif 31 <= d100_roll <= 40:
 		new_money -= sr
-	elif 61 <= i <= 80:
+	elif 61 <= d100_roll <= 80:
 		if sr >= 7:
 			new_money += sr * get_expected_roll(4, 8, a, high_a, higher_a, True)
 		elif sr >= 4:
 			new_money += sr * get_expected_roll(4, 8, a, high_a, higher_a, False)
 		else:
 			new_money += sr * get_expected_roll(2, 8, a, high_a, higher_a, False)
-	elif 81 <= i <= 90:
+	elif 81 <= d100_roll <= 90:
 		if sr >= 7:
 			new_money += sr * get_expected_roll(4, 10, a, high_a, higher_a, True)
 		elif sr >= 4:
 			new_money += sr * get_expected_roll(4, 10, a, high_a, higher_a, False)
 		else:
 			new_money += sr * get_expected_roll(2, 10, a, high_a, higher_a, False)
-	elif 91 <= i <= 100:
+	elif 91 <= d100_roll <= 100:
 		if sr >= 7:
 			new_money += sr * get_expected_roll(4, 12, a, high_a, higher_a, True)
 		elif sr >= 4:
@@ -101,7 +104,6 @@ def  get_passive_money(sr, i, a, high_a, higher_a):
 
 def get_expected_roll(dice, die_size, a, high_a, higher_a, double):
 	roll = 0
-	die_ev = (die_size + 1) / 2
 	for i in range(dice):
 		total_poss_die_val = 0
 		for j in range(1, die_size + 1):
@@ -135,7 +137,6 @@ def get_die_effective_value(base_value, die_size, a, high_a, higher_a):
 @click.option('-i', default=0, help='Int/Lore skill modifier')
 @click.option('-s', default=0, help='Shop skill modifier')
 @click.option('-d', default=0, help='Diplomacy modifier')
-@click.option('-l', default=1, help='Character level')
 @click.option('-sr', default=1, help='Shop Rank')
 @click.option('-a', is_flag=True, help="flag for Assurance")
 @click.option('-high_a', is_flag=True, help="flag for High Quality Assurance")
@@ -143,9 +144,9 @@ def get_die_effective_value(base_value, die_size, a, high_a, higher_a):
 @click.option('-haul', is_flag=True, help="flag for Last Week's Haul")
 @click.option('-sister', is_flag=True, help="flag for Sister Location")
 @click.option('-crits', is_flag=True, help="flag for Business Expertise")
-def handler(mode, i, s, d, l, sr, a, high_a, higher_a, haul, sister, crits):
+def handler(mode, i, s, d, sr, a, high_a, higher_a, haul, sister, crits):
 	if mode == 'run':
-		calculate_run_shop(i, s, d, sr, haul, l, crits)
+		calculate_run_shop(i, s, d, sr, haul, crits)
 	elif mode == 'passive':
 		expected_value = calculate_passive(sr, a, high_a, higher_a, haul, sister)
 		print('Expected value: {:.3f}'.format(expected_value))
