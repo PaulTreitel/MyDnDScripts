@@ -15,7 +15,7 @@ def rollOneStat(num_dice, die_size, num_keep):
 	die_size - the size of the dice to roll
 	num_keep - how many of the rolled dice should be kept
 	'''
-	rolls = rollDice(die_size, num_dice)
+	rolls = rollDice(num_dice, die_size)
 	rolls.sort(reverse=True)
 	total = 0
 	for k in range(num_keep):
@@ -26,7 +26,7 @@ def rollNormalStats(num_dice, die_size, num_keep):
 	'''Generates stats with a standard "XdY drop lowest Z" format.'''
 	stats = []
 	for i in range(NUM_STATS):
-		statroll = rollOneStat(die_size, num_dice, num_keep)
+		statroll = rollOneStat(num_dice, die_size, num_keep)
 		stats.append(statroll)
 	return stats
 
@@ -68,6 +68,25 @@ def rollStephStats(num_dice, die_size, num_keep):
 			stats.append(total)
 	return stats
 
+def ADnDMethod2(num_dice, die_size, num_keep):
+	stats = []
+	for i in range(12):
+		statroll = rollOneStat(die_size, num_dice, num_keep)
+		stats.append(statroll)
+	stats.sort(reverse=True)
+	return stats[0:6]
+
+def ADnDMethod3(num_dice, die_size, num_keep):
+	stats = []
+	for i in range(NUM_STATS):
+		stat_attempts = []
+		for j in range(6):
+			stat = rollOneStat(num_dice, die_size, num_keep)
+			stat_attempts.append(stat)
+		stat_attempts.sort(reverse=True)
+		stats.append(stat_attempts[0])
+	return stats
+
 def runDiceTests(num_dice, die_size, num_keep, num_tests, rollfunc):
 	'''
 	Simulates stat generation multiple times.
@@ -101,5 +120,5 @@ if __name__ == "__main__":
 	DICEKEEP = 3
 	NUMTESTS = 100000
 	OUTFILE = "out.csv"
-	test_results = runDiceTests(4, 6, 3, NUMTESTS, rollNormalStats)
+	test_results = runDiceTests(DICECOUNT, SIZE, DICEKEEP, NUMTESTS, ADnDMethod3)
 	recordResults(OUTFILE, test_results, NUMTESTS)
