@@ -42,10 +42,18 @@ def loadSettings():
 
 
 @click.group(invoke_without_command=True)
+@click.option("-n", default=DEFAULT_NUM_NAMES, help=f"number of names to generate (default is {DEFAULT_NUM_NAMES})")
+@click.option("-last", "-l", is_flag=True, default=False, help="generate last names (default is first names)")
+@click.option("-output", "-o", help="filepath to output data into")
+@click.option("-datafile", "-d", help=f"path to analyzed JSON data (default is `{DEFAULT_JSON_DATAFILE}`)")
 @click.pass_context
-def main(ctx):
+def main(ctx, n, last, output, datafile):
+	'''
+	Generate new names character-by-character using a Markov chain based on analysis of a body of text(s).
+	If invoked without a subcommand, it will default to generating names using the program arguments.
+	'''
 	if ctx.invoked_subcommand is None:
-		generateNames(DEFAULT_NUM_NAMES, False, None, DEFAULT_JSON_DATAFILE)
+		generateNames(n, last, output, datafile)
 
 @main.command("prefix")
 @click.option("-n", default=DEFAULT_NUM_NAMES, help=f"number of names to generate (default is {DEFAULT_NUM_NAMES})")
@@ -66,6 +74,9 @@ def prefix(n, last, output, datafile, prefix):
 @click.option("-output", "-o", help="filepath to output data into")
 @click.option("-datafile", "-d", help=f"path to analyzed JSON data (default is `{DEFAULT_JSON_DATAFILE}`)")
 def generate(n, last, output, datafile):
+	'''
+	Generate a set of names
+	'''
 	generateNames(n, last, output, datafile)
 
 def generateNames(n, last, output, datafile, prefix=None):

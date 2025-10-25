@@ -52,17 +52,16 @@ def removeChars(inputfiles):
 			print("Writing to " + filename + ".new")
 			f2.write("\n".join(output_lines))
 
-@main.command("formats")
+@main.command("formats", short_help="outputs the frequency of consonant-vowel forms in input files")
 @click.option("-output", "-o", help="filepath to output data into")
 @click.option("-minoccurences", "-mo", required=True, type=int, help="Required. Minimum number of occurences for a name format to count.")
 @click.argument("inputfiles", nargs=-1, required=True)
 def getFormats(minoccurences, inputfiles, output):
 	'''
-	outputs the frequency of consonant-vowel forms in input files
+	Converts each word in the input files to its CVF and records how many times it occurs across all files.
+	Formats which do not occur enough times or are too long (>12 characters) are excluded.
+	The results are converted into probabilities for each format, then written out, optionally to the output file.
 	'''
-	# Converts each word in the input files to its CVF and records how many times it occurs across all files.
-	# Formats which do not occur enough times or are too long (>12 characters) are excluded.
-	# The results are converted into probabilities for each format, then written out, optionally to the output file.
 	formats = {}
 	for filename in inputfiles:
 		print("Reading from " + filename)
