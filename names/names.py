@@ -15,6 +15,9 @@ import click
 LETTERS = "abcdefghijklmnopqrstuvwxyz"
 VOWELS = "aeiou"
 
+DEFAULT_NUM_NAMES = 20
+DEFAULT_JSON_DATAFILE = "data_names.json"
+
 bad_starts = []
 first_name_ordered = []
 first_name_freqs = []
@@ -38,6 +41,92 @@ def loadSettings():
 		last_name_freqs = [last_name_formats[k] for k in last_name_ordered]
 
 
+@click.group(invoke_without_command=True)
+@click.pass_context
+def main(ctx):
+	if ctx.invoked_subcommand is None:
+		generateNames(DEFAULT_NUM_NAMES, False, None, DEFAULT_JSON_DATAFILE)
+
+@main.command("prefix")
+@click.option("-n", default=DEFAULT_NUM_NAMES, help=f"number of names to generate (default is {DEFAULT_NUM_NAMES})")
+@click.option("-last", "-l", is_flag=True, default=False, help="generate last names (default is first names)")
+@click.option("-output", "-o", help="filepath to output data into")
+@click.option("-datafile", "-d", help=f"path to analyzed JSON data (default is `{DEFAULT_JSON_DATAFILE}`)")
+@click.argument("prefix")
+def prefix(n, last, output, datafile, prefix):
+	'''
+	Generate a set of names sharing a prefix
+	'''
+	generateNames(n, last, output, datafile, prefix)
+
+
+@main.command("generate")
+@click.option("-n", default=DEFAULT_NUM_NAMES, help=f"number of names to generate (default is {DEFAULT_NUM_NAMES})")
+@click.option("-last", "-l", is_flag=True, default=False, help="generate last names (default is first names)")
+@click.option("-output", "-o", help="filepath to output data into")
+@click.option("-datafile", "-d", help=f"path to analyzed JSON data (default is `{DEFAULT_JSON_DATAFILE}`)")
+def generate(n, last, output, datafile):
+	generateNames(n, last, output, datafile)
+
+def generateNames(n, last, output, datafile, prefix=None):
+	'''
+	Generate a set of names
+	'''
+	if datafile is None:
+			datafile = DEFAULT_JSON_DATAFILE
+	
+	mk, freq = configureMarkov(datafile)
+	
+	printfile = None
+	if output is not None:
+		printfile = open(output, "w")
+	for i in range(n):
+		print(createNameRules(mk, freq, last, prefix), file=printfile)
+	if printfile is not None:
+		printfile.close()
+
+
+@main.command("random")
+@click.option("-n", default=DEFAULT_NUM_NAMES, help=f"number of names to generate (default {DEFAULT_NUM_NAMES})")
+@click.option("-output", "-o", help="filepath to output data into")
+@click.argument("inputfiles", nargs=-1, required=True)
+def randomNames(n, output, inputfiles):
+	'''
+	Randomly select lines from the set of input file(s)
+	'''
+	names = []
+	for fname in inputfiles:
+		with open(fname, "r") as f:
+			lines = f.readlines()
+			names.extend([l.strip() for l in lines])
+
+	printfile = None
+	if output is not None:
+		printfile = open(output, "w")
+	for i in range(n):
+		print(random.choice(names), file=printfile)
+	if printfile is not None:
+		printfile.close()
+
+@main.command("analyze")
+@click.option("-output", "-o", required=True, help="filepath to output data into")
+@click.argument("inputfiles", nargs=-1, required=True)
+def analyzeFiles(inputfiles, output):
+	'''
+	Analyze text of input file(s) then export it to a JSON file
+	'''
+	if output is None:
+		print("Error: you must specify an output file")
+		exit(1)
+	if len(inputfiles) == 0:
+		print("Error: you must specify at least one input file")
+		exit(1)
+	total_seen = {}
+	state_table = {}
+	start_letters = [0] * 26
+	for filename in inputfiles:
+		analyzeText(filename, total_seen, state_table, start_letters)
+	exportAnalysis(output, total_seen, state_table, inputfiles, start_letters)
 
 
 def exportAnalysis(filename, total_seen, state_table, text_names, start_letters):
@@ -206,96 +295,6 @@ def configureMarkov(datafile):
 	total = sum(start_letters)
 	freq = [(1.0 * start_letters[i]) / (1.0 * total) for i in range(len(start_letters))]
 	return mk, freq
-
-
-def analyzeFiles(inputfiles, outfile):
-	'''
-	Analyzes the combined text of a set of input file(s) then exports it into a JSON file.
-	'''
-	if outfile is None:
-		print("Error: you must specify an output file")
-		exit(1)
-	if len(inputfiles) == 0:
-		print("Error: you must specify at least one input file")
-		exit(1)
-	total_seen = {}
-	state_table = {}
-	start_letters = [0] * 26
-	for filename in inputfiles:
-		analyzeText(filename, total_seen, state_table, start_letters)
-	exportAnalysis(outfile, total_seen, state_table, inputfiles, start_letters)
-
-
-def generateNames(inputfiles, outfile, n, use_last, prefix=None):
-	'''
-	Randomly generates a list of names using input JSON data, optionally writing it to a file.
-	Optionally, the names can all begin with a shared prefix.
-	'''
-	if len(inputfiles) == 0:
-			inputfiles = ["data_names.json"]
-	if len(inputfiles) > 1:
-		print("Error: generating names requires a single JSON input file.")
-		exit(1)
-	
-	mk, freq = configureMarkov(inputfiles[0])
-	
-	printfile = None
-	if outfile is not None:
-		printfile = open(outfile, "w")
-	for i in range(n):
-		print(createNameRules(mk, freq, use_last, prefix), file=printfile)
-	if printfile is not None:
-		printfile.close()
-
-
-def randomNames(inputfiles, outfile, n):
-	'''
-	Randomly select lines from the set of input file(s), optionally writing it to a file.
-	'''
-	if len(inputfiles) == 0:
-		print("Error: you must specify at least one input file")
-		exit(1)
-	names = []
-	for fname in inputfiles:
-		with open(fname, "r") as f:
-			lines = f.readlines()
-			names.extend([l.strip() for l in lines])
-
-	printfile = None
-	if outfile is not None:
-		printfile = open(outfile, "w")
-	for i in range(n):
-		print(random.choice(names), file=printfile)
-	if printfile is not None:
-		printfile.close()
-
-
-@click.command(context_settings={"ignore_unknown_options": True})
-@click.option("-generate", "-g", is_flag=True, help="(default) generate names. INPUTFILES should be a single JSON file generated by the `analyze` command.")
-@click.option("-prefix", "-p", nargs=1, help="generate a set of names with a fixed prefix. INPUTFILES should be a single JSON file generated by the `analyze` command.")
-@click.option("-analyze", "-a", is_flag=True, help="analyze a set of input texts into a JSON dump used to generate names. INPUTFILES should be 1 or more text files.")
-@click.option("-random", "-r", is_flag=True, help="select random names from input texts. INPUTFILES should be 1 or more text files.")
-@click.option("-output", "-o", help="filepath to output data into")
-@click.option("-n", default=20, help="number of names to generate (default 20)")
-@click.option("-last", "-l", is_flag=True, default=False, help="generate last names (default is first names)")
-@click.argument("inputfiles", nargs=-1)
-def main(generate, analyze, prefix, random, output, n, last, inputfiles):
-	
-	# Ensure that the user has only entered one possible mode (zero modes = generate).
-	modes = [generate, analyze, prefix, random]
-	ct = sum([1 if m else 0 for m in modes])
-	if ct > 1:
-		print("Error: you can only pick one mode")
-		exit(1)
-
-	if analyze:
-		analyzeFiles(inputfiles, output)
-	elif prefix is not None:
-		generateNames(inputfiles, output, n, last, prefix=prefix)
-	elif random:
-		randomNames(inputfiles, output, n)
-	else: # generate
-		generateNames(inputfiles, output, n, last)
 
 #3 char sequences to block?
 #hp, brn, bdn, wsh, nsj, chb, dhr, mrk, zdk, wch, dzh, nzd, lrh, trh
