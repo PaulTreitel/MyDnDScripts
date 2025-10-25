@@ -11,16 +11,33 @@ import click
 # https://www.quora.com/What-is-the-average-length-of-last-names-in-the-United-States
 # https://www.quora.com/What-is-the-average-length-of-first-names-in-the-United-States
 
-start = open("config.json", "r")
-configdump = json.loads(start.read())
-start.close()
+
+LETTERS = "abcdefghijklmnopqrstuvwxyz"
+VOWELS = "aeiou"
+
+bad_starts = []
+first_name_ordered = []
+first_name_freqs = []
+last_name_ordered = []
+last_name_freqs = []
+
+def loadSettings():
+	global bad_starts
+	global first_name_ordered
+	global first_name_freqs
+	global last_name_ordered
+	global last_name_freqs
+	with open("config.json", "r") as f:
+		settings = json.loads(f.read())
+		bad_starts = settings["bad_starts"]
+		first_name_formats = settings["formats_first"]
+		last_name_formats = settings["formats_last"]
+		first_name_ordered = sorted(first_name_formats.keys())
+		first_name_freqs = [first_name_formats[k] for k in first_name_ordered]
+		last_name_ordered = sorted(last_name_formats.keys())
+		last_name_freqs = [last_name_formats[k] for k in last_name_ordered]
 
 
-letters = "abcdefghijklmnopqrstuvwxyz"
-vowels = "aeiou"
-formats_first = configdump["formats_first"]
-formats_last = configdump["formats_last"]
-bad_starts = configdump["bad_starts"]
 
 
 def exportAnalysis(filename, total_seen, state_table, text_names, start_letters):
@@ -55,17 +72,27 @@ def tableInsert(state_table, total_seen, old, new):
 	Insert a new entry into the text analysis tables
 	'''
 	if old in state_table:
-		if new in state_table[old]:
-			state_table[old][new] += 1
-		else:
-			state_table[old][new] = 1
+		state_table[old][new] = state_table[old].get(new, 0) + 1
 	else:
 		state_table[old] = {new : 1}
+	total_seen[old] = total_seen.get(old, 0) + 1
 
-	if old in total_seen:
-		total_seen[old] += 1
-	else:
-		total_seen[old] = 1
+
+def analyzeLetterSequence(state_table, total_seen, start_letters, line, k):
+	'''
+	Counts letter-sequence occurences in a single line of text
+	'''
+	old_state = ""
+	for idx in range(len(line)):
+		if len(old_state) < k and line[idx] in LETTERS:
+			old_state += line[idx]
+			if k == 1:
+				start_letters[LETTERS.index(line[idx])] += 1
+		elif line[idx] in LETTERS:
+			tableInsert(state_table, total_seen, old_state, line[idx])
+			if k == 1:
+				break
+			old_state = old_state[1:] + line[idx]
 
 
 def analyzeText(filename, total_seen, state_table, start_letters):
@@ -74,49 +101,16 @@ def analyzeText(filename, total_seen, state_table, start_letters):
 	Returns nothing, the state table and total seen list are updated.
 	'''
 	print(filename)
-	f = open(filename, "r")
-	while True:
-		line = f.readline().strip().lower()
-		if not line:
-			break
+	lines = []
+	with open(filename, "r") as f:
+		lines = f.readlines()
+	lines = [l.strip().lower() for l in lines]
 
-		for k in range(1, 3): # analyze 1 and 2 letter states
-			old_state = ""
-			for idx in range(len(line)):
-				if len(old_state) < k and line[idx] in letters:
-					old_state = old_state + line[idx]
-					if k == 1:
-						start_letters[letters.index(line[idx])] += 1
-				elif line[idx] in letters:
-					tableInsert(state_table, total_seen, old_state, line[idx])
-					if k == 1:
-						break
-					old_state = old_state[1:] + line[idx]
-
-
-def filesToList(filenames):
-	'''
-	Given a series of filepaths, load each line of text of all of them into a single list.
-	'''
-	names = []
-	for fname in filenames:
-		with open(fname, "r") as f:
-			while True:
-				l = f.readline()
-				if not l:
-					break
-				names.append(l.strip())
-	return names
-
-
-def calculateProbabilities(state_table, total_seen):
-	'''
-	Converts state table from counts of each letter-sequence occurrence to the probabilities of each occurence.
-	This is necessary for it to be used by the Markov chain.
-	'''
-	for k in state_table.keys():
-		for k2 in state_table[k].keys():
-			state_table[k][k2] /= total_seen[k]
+	for line in lines:
+		# analyze 1 and 2 letter states
+		for k in range(1, 3):
+			analyzeLetterSequence(state_table, total_seen, start_letters, line, k)
+	f.close()
 
 
 def getRandLetter(freq):
@@ -128,7 +122,19 @@ def getRandLetter(freq):
 	for i in range(len(freq)):
 		s += freq[i]
 		if val <= s:
-			return letters[i]
+			return LETTERS[i]
+
+
+def getRandFormat(formats, format_freqs):
+	'''
+	Generate a random name format using the probabilities in the config JSON file
+	'''
+	val = random.random()
+	s = 0
+	for i in range(len(format_freqs)):
+		s += format_freqs[i]
+		if val <= s:
+			return formats[i]
 
 
 def formatsMatch(name, form):
@@ -138,44 +144,43 @@ def formatsMatch(name, form):
 	'''
 	name_form = ""
 	for ch in name:
-		if ch in vowels:
+		if ch in VOWELS:
 			name_form += "V"
-		elif ch in letters:
+		elif ch in LETTERS:
 			name_form += "C"
 		else:
 			name_form += "?"
 	return name_form == form[0:len(name_form)]
 
 
-def getLetterFreq(start_letters):
-	'''
-	Transform in-place counts of how many names start with each letter into probabilities
-	'''
-	total = sum(start_letters)
-	return [(1.0 * start_letters[i]) / (1.0 * total) for i in range(len(start_letters))]
-
-
-def createNameRules(mk, freq, forms_used, prefix=''):
+def createNameRules(mk, freq, use_last, prefix=None):
 	'''
 	Generate a name using the Markov chain.
 	The name will follow a consonant-vowel form randomly chosen among some that appear in the dataset.
 	Certain 2-letter sequences are banned at the start of names for the sake of English pronouncability.
 	Those sequences will be avoided.
 	'''
+	formats_list = first_name_ordered
+	format_freqs = first_name_freqs
+	if use_last:
+		formats_list = last_name_ordered
+		format_freqs = last_name_freqs
+
 	form = ''
 	name = ''
-	if prefix == '':
-		form = random.choice(forms_used)
+	if prefix is None:
 		name = getRandLetter(freq)
+		form = getRandFormat(formats_list, format_freqs)
 	else:
 		name = prefix
-		form = random.choice(forms_used)
+		form = getRandFormat(formats_list, format_freqs)
 
-	while not formatsMatch(name, form): # rule enforced on first char
-		if prefix == '':
+	# rule enforced on first char
+	while not formatsMatch(name, form):
+		if prefix is None:
 			name = getRandLetter(freq)
 		else:
-			form = random.choice(forms_used)
+			form = getRandFormat(formats_list, format_freqs)
 	
 	mk.setState(name)
 	for i in range(len(form) - len(name)):
@@ -186,18 +191,21 @@ def createNameRules(mk, freq, forms_used, prefix=''):
 	return mk.state
 
 
-def configureMarkov(datafile, use_last):
+def configureMarkov(datafile):
 	'''
 	Create the Markov chain and the necessary configuration structures.
 	Information is read in from the provided pre-analyzed JSON file.
 	'''
 	total_seen, state_table, start_letters = importAnalysis(datafile)
-	calculateProbabilities(state_table, total_seen)
+
+	for k in state_table.keys():
+		for k2 in state_table[k].keys():
+			state_table[k][k2] /= total_seen[k]
 	mk = markov.Markov(state_table, "")
-	freq = getLetterFreq(start_letters)
-	if use_last:
-		return mk, freq, formats_last
-	return mk, freq, formats_first
+
+	total = sum(start_letters)
+	freq = [(1.0 * start_letters[i]) / (1.0 * total) for i in range(len(start_letters))]
+	return mk, freq
 
 
 def analyzeFiles(inputfiles, outfile):
@@ -218,7 +226,7 @@ def analyzeFiles(inputfiles, outfile):
 	exportAnalysis(outfile, total_seen, state_table, inputfiles, start_letters)
 
 
-def generateNames(inputfiles, outfile, n, prefix=None):
+def generateNames(inputfiles, outfile, n, use_last, prefix=None):
 	'''
 	Randomly generates a list of names using input JSON data, optionally writing it to a file.
 	Optionally, the names can all begin with a shared prefix.
@@ -228,13 +236,14 @@ def generateNames(inputfiles, outfile, n, prefix=None):
 	if len(inputfiles) > 1:
 		print("Error: generating names requires a single JSON input file.")
 		exit(1)
-	mk, freq, forms_used = configureMarkov(inputfiles[0], False)
-
+	
+	mk, freq = configureMarkov(inputfiles[0])
+	
 	printfile = None
 	if outfile is not None:
 		printfile = open(outfile, "w")
 	for i in range(n):
-		print(createNameRules(mk, freq, forms_used, prefix), file=printfile)
+		print(createNameRules(mk, freq, use_last, prefix), file=printfile)
 	if printfile is not None:
 		printfile.close()
 
@@ -246,7 +255,12 @@ def randomNames(inputfiles, outfile, n):
 	if len(inputfiles) == 0:
 		print("Error: you must specify at least one input file")
 		exit(1)
-	names = filesToList(inputfiles)
+	names = []
+	for fname in inputfiles:
+		with open(fname, "r") as f:
+			lines = f.readlines()
+			names.extend([l.strip() for l in lines])
+
 	printfile = None
 	if outfile is not None:
 		printfile = open(outfile, "w")
@@ -257,15 +271,15 @@ def randomNames(inputfiles, outfile, n):
 
 
 @click.command(context_settings={"ignore_unknown_options": True})
-@click.option("-generate", is_flag=True, help="(default) generate names. INPUTFILES should be a single JSON file generated by the `analyze` command.")
-@click.option("-prefix", nargs=1, help="generate a set of names with a fixed prefix. INPUTFILES should be a single JSON file generated by the `analyze` command.")
-@click.option("-analyze", is_flag=True, help="analyze a set of input texts into a JSON dump used to generate names. INPUTFILES should be 1 or more text files.")
-@click.option("-random", is_flag=True, help="select random names from input texts. INPUTFILES should be 1 or more text files.")
-@click.option("-o", help="filepath to output data into")
+@click.option("-generate", "-g", is_flag=True, help="(default) generate names. INPUTFILES should be a single JSON file generated by the `analyze` command.")
+@click.option("-prefix", "-p", nargs=1, help="generate a set of names with a fixed prefix. INPUTFILES should be a single JSON file generated by the `analyze` command.")
+@click.option("-analyze", "-a", is_flag=True, help="analyze a set of input texts into a JSON dump used to generate names. INPUTFILES should be 1 or more text files.")
+@click.option("-random", "-r", is_flag=True, help="select random names from input texts. INPUTFILES should be 1 or more text files.")
+@click.option("-output", "-o", help="filepath to output data into")
 @click.option("-n", default=20, help="number of names to generate (default 20)")
+@click.option("-last", "-l", is_flag=True, default=False, help="generate last names (default is first names)")
 @click.argument("inputfiles", nargs=-1)
-def main(generate, analyze, prefix, random, o, n, inputfiles):
-	outfile = o
+def main(generate, analyze, prefix, random, output, n, last, inputfiles):
 	
 	# Ensure that the user has only entered one possible mode (zero modes = generate).
 	modes = [generate, analyze, prefix, random]
@@ -273,18 +287,19 @@ def main(generate, analyze, prefix, random, o, n, inputfiles):
 	if ct > 1:
 		print("Error: you can only pick one mode")
 		exit(1)
-	
+
 	if analyze:
-		analyzeFiles(inputfiles, outfile)
+		analyzeFiles(inputfiles, output)
 	elif prefix is not None:
-		generateNames(inputfiles, outfile, n, prefix=prefix)
+		generateNames(inputfiles, output, n, last, prefix=prefix)
 	elif random:
-		randomNames(inputfiles, outfile, n)
+		randomNames(inputfiles, output, n)
 	else: # generate
-		generateNames(inputfiles, outfile, n)
+		generateNames(inputfiles, output, n, last)
 
 #3 char sequences to block?
 #hp, brn, bdn, wsh, nsj, chb, dhr, mrk, zdk, wch, dzh, nzd, lrh, trh
 
 if __name__ == "__main__":
+	loadSettings()
 	main()
