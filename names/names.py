@@ -16,7 +16,7 @@ LETTERS = "abcdefghijklmnopqrstuvwxyz"
 VOWELS = "aeiou"
 
 DEFAULT_NUM_NAMES = 20
-DEFAULT_JSON_DATAFILE = "data_names.json"
+DEFAULT_JSON_DATAFILE = "data_names_3.json"
 
 bad_starts = []
 first_name_ordered = []
@@ -207,8 +207,8 @@ def analyzeText(filename, total_seen, state_table, start_letters):
 	lines = [l.strip().lower() for l in lines]
 
 	for line in lines:
-		# analyze 1 and 2 letter states
-		for k in range(1, 3):
+		# analyze 1 to 3 letter states
+		for k in range(1, 4):
 			analyzeLetterSequence(state_table, total_seen, start_letters, line, k)
 	f.close()
 
@@ -277,6 +277,7 @@ def createNameRules(mk, freq, use_last, prefix=None):
 
 	# rule enforced on first char
 	while not formatsMatch(name, form):
+		# print('1')
 		if prefix is None:
 			name = getRandLetter(freq)
 		else:
@@ -285,9 +286,19 @@ def createNameRules(mk, freq, use_last, prefix=None):
 	mk.setState(name)
 	for i in range(len(form) - len(name)):
 		mk.step()
+		ct = 0
 		while mk.state[:2] in bad_starts or not formatsMatch(mk.state, form):
 			mk.setState(mk.state[:-1])
 			mk.step()
+			ct += 1
+			if ct == 100 and len(mk.state) > 2:
+				print('triggered')
+				mk.setState(mk.state[:-2])
+				mk.step()
+				ct = 0
+		if mk.state[-3:] not in mk.table:
+			# print('miss')
+			mk.setState(mk.state[:-1])
 	return mk.state
 
 

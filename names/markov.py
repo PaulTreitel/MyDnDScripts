@@ -8,7 +8,7 @@ class Markov:
 	def step(self):
 		old_state = self.state
 		if len(self.state) > 1:
-			old_state = self.state[-2:]
+			old_state = self.state[-3:]
 		r = random.random()
 		s = 0
 		states = self.table[old_state]
